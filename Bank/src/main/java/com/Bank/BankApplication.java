@@ -1,7 +1,6 @@
 package com.Bank;
 
 import org.springframework.ui.Model;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 public class BankApplication {
 	@Autowired
 	public HttpServletRequest request;
-
 
 	public static void main(String[] args) {
 		SpringApplication.run(BankApplication.class, args);
@@ -33,8 +31,18 @@ public class BankApplication {
 	}
 
 	@GetMapping("/loggedIn")
-	public String loggedIn() {
-		return "loggedIn";
+	public String getBalance(User user, Model model) {
+		HttpSession session = request.getSession();
+		String username = (String) session.getAttribute("username");
+		if (username != null) {
+			User found = userRepository.getUserByUsername(username);
+			if (found != null) {
+				model.addAttribute("userBalance", found.getBalance());
+				return "loggedIn";
+
+			}
+		}
+		return "redirect:/";
 	}
 
 	@GetMapping("/register")
@@ -52,21 +60,21 @@ public class BankApplication {
 		User found = userRepository.getUserByUsername(user.getUsername());
 		if (found == null) {
 			userRepository.save(user);
+			return "redirect:/";
 		} else {
-			return "User already exists";
+			return "register";
 		}
-		return "redirect:/";
 	}
 
 	@PostMapping("/login")
-	public String login(User user,HttpSession session) {
+	public String login(User user, HttpSession session) {
 		User found = userRepository.getUserByUsername(user.getUsername());
 		if (found != null && found.getPassword().equals(user.getPassword())) {
-			session.setAttribute("username", found.getUsername());
 
 			return "redirect:/loggedIn";
+		} else {
+			return "login";
 		}
-		else {return "redirect:/";}
 	}
 
 	@PostMapping("/deposit")
@@ -89,27 +97,28 @@ public class BankApplication {
 			}
 			return "redirect:/";
 		}
-        return "redirect:/";
-    }
+		return "redirect:/";
+	}
 
 	@PostMapping("/withdraw")
 	public String withdraw(@RequestParam("withdraw") double withdrawAmount, User user) {
-
 		HttpSession session = request.getSession();
-
 		String username = (String) session.getAttribute("username");
-
 		if (username != null) {
 			User found = userRepository.getUserByUsername(username);
 			if (found != null) {
-				// Update the user's balance
-				double currentBalance = found.getBalance();
-				found.setBalance(currentBalance - withdrawAmount);
 
+				double currentBalance = found.getBalance();
+				if (currentBalance >= withdrawAmount && withdrawAmount > 0) {
+					found.setBalance(currentBalance - withdrawAmount);
+				}
 				userRepository.save(found);
 				return "redirect:/loggedIn";
 			}
-			return "redirect:/";
+
+			else{
+				return "redirect:/";}
+
 		}
 		return "redirect:/";
 	}
